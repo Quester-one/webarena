@@ -19,12 +19,6 @@ os.environ["WIKIPEDIA"] = WIKIPEDIA
 os.environ["HOMEPAGE"] = HOMEPAGE  # The home page is not currently hosted in the demo site
 print("Done setting up URLs")
 
-# First, run `python scripts/generate_test_data.py` to generate the config files
-p = subprocess.run(
-    ["python", "scripts/generate_test_data.py"], capture_output=True
-)
-
-# It will generate individual config file for each test example in config_files
 assert os.path.exists("config_files/0.json")
 
 # Make sure the URLs in the config files are replaced properly
@@ -57,7 +51,7 @@ from evaluation_harness.evaluators import evaluator_router
 
 # Init the environment
 env = ScriptBrowserEnv(
-    headless=False,
+    headless=True,
     slow_mo=100,
     observation_type="accessibility_tree",
     current_viewport_only=True,
@@ -65,7 +59,7 @@ env = ScriptBrowserEnv(
 )
 
 # example 156 as an example
-config_file = "config_files/156.json"
+config_file = "config_files/550.json"
 # maintain a trajectory
 trajectory: Trajectory = []
 

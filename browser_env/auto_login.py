@@ -8,18 +8,20 @@ from itertools import combinations
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE
 
-from browser_env.env_config import (
-    ACCOUNTS,
-    GITLAB,
-    REDDIT,
-    SHOPPING,
-    SHOPPING_ADMIN,
-)
+os.environ["SHOPPING"] = SHOPPING
+os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
+os.environ["REDDIT"] = REDDIT
+os.environ["GITLAB"] = GITLAB
+os.environ["MAP"] = MAP
+os.environ["WIKIPEDIA"] = WIKIPEDIA
+os.environ["HOMEPAGE"] = HOMEPAGE
+
+from browser_env.env_config import ACCOUNTS
 
 HEADLESS = True
 SLOW_MO = 0
-
 
 SITES = ["gitlab", "shopping", "shopping_admin", "reddit"]
 URLS = [
@@ -33,7 +35,7 @@ KEYWORDS = ["", "", "Dashboard", "Delete"]
 
 
 def is_expired(
-    storage_state: Path, url: str, keyword: str, url_exact: bool = True
+        storage_state: Path, url: str, keyword: str, url_exact: bool = True
 ) -> bool:
     """Test whether the cookie is expired"""
     if not storage_state.exists():
@@ -58,7 +60,7 @@ def is_expired(
             return url not in d_url
 
 
-def renew_comb(comb: list[str], auth_folder: str = "./.auth") -> None:
+def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     context_manager = sync_playwright()
     playwright = context_manager.__enter__()
     browser = playwright.chromium.launch(headless=HEADLESS)
@@ -109,7 +111,7 @@ def get_site_comb_from_filepath(file_path: str) -> list[str]:
     return comb
 
 
-def main(auth_folder: str = "./.auth") -> None:
+def main(auth_folder: str = "../.auth") -> None:
     pairs = list(combinations(SITES, 2))
 
     max_workers = 8
@@ -117,7 +119,7 @@ def main(auth_folder: str = "./.auth") -> None:
         for pair in pairs:
             # TODO[shuyanzh] auth don't work on these two sites
             if "reddit" in pair and (
-                "shopping" in pair or "shopping_admin" in pair
+                    "shopping" in pair or "shopping_admin" in pair
             ):
                 continue
             executor.submit(
@@ -148,7 +150,7 @@ def main(auth_folder: str = "./.auth") -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_list", nargs="+", default=[])
-    parser.add_argument("--auth_folder", type=str, default="./.auth")
+    parser.add_argument("--auth_folder", type=str, default="../.auth")
     args = parser.parse_args()
     if not args.site_list:
         main()

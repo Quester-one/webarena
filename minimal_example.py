@@ -59,7 +59,7 @@ env = ScriptBrowserEnv(
 )
 
 # example 156 as an example
-config_file = "config_files/550.json"
+config_file = "config_files/156.json"
 # maintain a trajectory
 trajectory: Trajectory = []
 

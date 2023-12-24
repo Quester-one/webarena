@@ -8,7 +8,8 @@ from itertools import combinations
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
-from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE
+from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, https_proxy, \
+    OPENAI_API_KEY, proxy_server, proxy_username, proxy_password
 
 os.environ["SHOPPING"] = SHOPPING
 os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
@@ -17,6 +18,9 @@ os.environ["GITLAB"] = GITLAB
 os.environ["MAP"] = MAP
 os.environ["WIKIPEDIA"] = WIKIPEDIA
 os.environ["HOMEPAGE"] = HOMEPAGE
+os.environ["http_proxy"] = http_proxy
+os.environ["https_proxy"] = https_proxy
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 from browser_env.env_config import ACCOUNTS
 
@@ -43,7 +47,13 @@ def is_expired(
 
     context_manager = sync_playwright()
     playwright = context_manager.__enter__()
-    browser = playwright.chromium.launch(headless=True, slow_mo=SLOW_MO)
+    browser = playwright.chromium.launch(headless=True, slow_mo=SLOW_MO,
+                                         proxy={
+                                             'server': proxy_server,
+                                             'username': proxy_username,
+                                             'password': proxy_password,
+                                         }
+                                         )
     context = browser.new_context(storage_state=storage_state)
     page = context.new_page()
     page.goto(url)
@@ -63,7 +73,13 @@ def is_expired(
 def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     context_manager = sync_playwright()
     playwright = context_manager.__enter__()
-    browser = playwright.chromium.launch(headless=HEADLESS)
+    browser = playwright.chromium.launch(headless=HEADLESS,
+                                         proxy={
+                                             'server': proxy_server,
+                                             'username': proxy_username,
+                                             'password': proxy_password,
+                                         }
+                                         )
     context = browser.new_context()
     page = context.new_page()
 

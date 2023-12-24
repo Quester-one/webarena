@@ -6,7 +6,8 @@ import os
 import re
 import subprocess
 import time
-from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE
+from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, https_proxy, \
+    OPENAI_API_KEY
 
 SLEEP = 1.5
 # set the URLs of each website, we use the demo sites as an example
@@ -17,6 +18,9 @@ os.environ["GITLAB"] = GITLAB
 os.environ["MAP"] = MAP
 os.environ["WIKIPEDIA"] = WIKIPEDIA
 os.environ["HOMEPAGE"] = HOMEPAGE  # The home page is not currently hosted in the demo site
+# os.environ["http_proxy"] = http_proxy
+# os.environ["https_proxy"] = https_proxy
+# os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 print("Done setting up URLs")
 
 assert os.path.exists("config_files/0.json")
@@ -127,6 +131,5 @@ score = evaluator(
     page=env.page,
     client=env.get_page_client(env.page),
 )
-
 # as we manually perform the task, the task should be judged as correct
 assert score == 1.0

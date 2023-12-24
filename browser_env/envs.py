@@ -12,6 +12,7 @@ from beartype import beartype
 from beartype.door import is_bearable
 from gymnasium import Env
 from gymnasium.spaces import Box, Text
+from config_private import proxy_server, proxy_username, proxy_password
 from playwright.sync_api import (
     CDPSession,
     Page,
@@ -126,7 +127,13 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         self.context_manager = sync_playwright()
         self.playwright = self.context_manager.__enter__()
         self.browser = self.playwright.chromium.launch(
-            headless=self.headless, slow_mo=self.slow_mo
+            headless=self.headless,
+            slow_mo=self.slow_mo,
+            proxy={
+                'server': proxy_server,
+                'username': proxy_username,
+                'password': proxy_password,
+            }
         )
 
         if config_file:

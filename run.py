@@ -3,7 +3,19 @@ import argparse
 import glob
 import json
 import logging
+from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, \
+    https_proxy, OPENAI_API_KEY, proxy_server, proxy_username, proxy_password
 import os
+os.environ["SHOPPING"] = SHOPPING
+os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
+os.environ["REDDIT"] = REDDIT
+os.environ["GITLAB"] = GITLAB
+os.environ["MAP"] = MAP
+os.environ["WIKIPEDIA"] = WIKIPEDIA
+os.environ["HOMEPAGE"] = HOMEPAGE
+os.environ["http_proxy"] = http_proxy
+os.environ["https_proxy"] = https_proxy
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 import random
 import subprocess
 import tempfile
@@ -95,7 +107,7 @@ def config() -> argparse.Namespace:
     parser.add_argument(
         "--instruction_path",
         type=str,
-        default="agents/prompts/state_action_agent.json",
+        default="agent/prompts/jsons/p_cot_id_actree_2s.json",
     )
     parser.add_argument(
         "--parsing_failure_th",
@@ -140,10 +152,10 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=1000)
+    parser.add_argument("--test_end_idx", type=int, default=1)
 
     # logging related
-    parser.add_argument("--result_dir", type=str, default="")
+    parser.add_argument("--result_dir", type=str, default="results")
     args = parser.parse_args()
 
     # check the whether the action space is compatible with the observation space

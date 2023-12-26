@@ -1,4 +1,4 @@
-"""Script to automatically login each website"""
+# """Script to automatically login each website"""
 import argparse
 import glob
 import os
@@ -10,6 +10,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, https_proxy, \
     OPENAI_API_KEY, proxy_server, proxy_username, proxy_password
+from browser_env.env_config import ACCOUNTS
 
 os.environ["SHOPPING"] = SHOPPING
 os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
@@ -22,17 +23,14 @@ os.environ["http_proxy"] = http_proxy
 os.environ["https_proxy"] = https_proxy
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
-from browser_env.env_config import ACCOUNTS
-
 HEADLESS = True
 SLOW_MO = 0
-
 SITES = ["gitlab", "shopping", "shopping_admin", "reddit"]
 URLS = [
-    f"{GITLAB}/-/profile",
-    f"{SHOPPING}/wishlist/",
-    f"{SHOPPING_ADMIN}/dashboard",
-    f"{REDDIT}/user/{ACCOUNTS['reddit']['username']}/account",
+    "{}/-/profile".format(GITLAB),
+    "{}/wishlist/".format(SHOPPING),
+    "{}/dashboard".format(SHOPPING_ADMIN),
+    "{}/user/{}/account".format(REDDIT, ACCOUNTS['reddit']['username']),
 ]
 EXACT_MATCH = [True, True, True, True]
 KEYWORDS = ["", "", "Dashboard", "Delete"]
@@ -70,7 +68,7 @@ def is_expired(
             return url not in d_url
 
 
-def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
+def renew_comb(comb, auth_folder):
     context_manager = sync_playwright()
     playwright = context_manager.__enter__()
     browser = playwright.chromium.launch(headless=HEADLESS,
@@ -86,7 +84,7 @@ def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     if "shopping" in comb:
         username = ACCOUNTS["shopping"]["username"]
         password = ACCOUNTS["shopping"]["password"]
-        page.goto(f"{SHOPPING}/customer/account/login/")
+        page.goto("{}/customer/account/login/".format(SHOPPING))
         page.get_by_label("Email", exact=True).fill(username)
         page.get_by_label("Password", exact=True).fill(password)
         page.get_by_role("button", name="Sign In").click()
@@ -94,7 +92,7 @@ def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     if "reddit" in comb:
         username = ACCOUNTS["reddit"]["username"]
         password = ACCOUNTS["reddit"]["password"]
-        page.goto(f"{REDDIT}/login")
+        page.goto("{}/login".format(REDDIT))
         page.get_by_label("Username").fill(username)
         page.get_by_label("Password").fill(password)
         page.get_by_role("button", name="Log in").click()
@@ -102,7 +100,7 @@ def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     if "shopping_admin" in comb:
         username = ACCOUNTS["shopping_admin"]["username"]
         password = ACCOUNTS["shopping_admin"]["password"]
-        page.goto(f"{SHOPPING_ADMIN}")
+        page.goto("{}".format(SHOPPING_ADMIN))
         page.get_by_placeholder("user name").fill(username)
         page.get_by_placeholder("password").fill(password)
         page.get_by_role("button", name="Sign in").click()
@@ -110,14 +108,14 @@ def renew_comb(comb: list[str], auth_folder: str = "../.auth") -> None:
     if "gitlab" in comb:
         username = ACCOUNTS["gitlab"]["username"]
         password = ACCOUNTS["gitlab"]["password"]
-        page.goto(f"{GITLAB}/users/sign_in")
+        page.goto("{}/users/sign_in".format(GITLAB))
         page.get_by_test_id("username-field").click()
         page.get_by_test_id("username-field").fill(username)
         page.get_by_test_id("username-field").press("Tab")
         page.get_by_test_id("password-field").fill(password)
         page.get_by_test_id("sign-in-button").click()
 
-    context.storage_state(path=f"{auth_folder}/{'.'.join(comb)}_state.json")
+    context.storage_state(path="{}/{}_state.json".format(auth_folder, '.'.join(comb)))
 
     context_manager.__exit__()
 

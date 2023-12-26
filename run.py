@@ -4,8 +4,9 @@ import glob
 import json
 import logging
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, \
-    https_proxy, OPENAI_API_KEY, proxy_server, proxy_username, proxy_password
+    https_proxy, OPENAI_API_KEY, WEBARENA_PYTHON_PATH
 import os
+
 os.environ["SHOPPING"] = SHOPPING
 os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
 os.environ["REDDIT"] = REDDIT
@@ -152,16 +153,16 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=1)
+    parser.add_argument("--test_end_idx", type=int, default=30)
 
     # logging related
-    parser.add_argument("--result_dir", type=str, default="results")
+    parser.add_argument("--result_dir", type=str, default="results/result")
     args = parser.parse_args()
 
     # check the whether the action space is compatible with the observation space
     if (
-        args.action_set_tag == "id_accessibility_tree"
-        and args.observation_type != "accessibility_tree"
+            args.action_set_tag == "id_accessibility_tree"
+            and args.observation_type != "accessibility_tree"
     ):
         raise ValueError(
             f"Action type {args.action_set_tag} is incompatible with the observation type {args.observation_type}"
@@ -171,7 +172,7 @@ def config() -> argparse.Namespace:
 
 
 def early_stop(
-    trajectory: Trajectory, max_steps: int, thresholds: dict[str, int]
+        trajectory: Trajectory, max_steps: int, thresholds: dict[str, int]
 ) -> tuple[bool, str]:
     """Check whether need to early stop"""
 
@@ -188,10 +189,10 @@ def early_stop(
     last_k_actions = trajectory[1::2][-k:]  # type: ignore[assignment]
     if len(last_k_actions) >= k:
         if all(
-            [
-                action["action_type"] == ActionTypes.NONE
-                for action in last_k_actions
-            ]
+                [
+                    action["action_type"] == ActionTypes.NONE
+                    for action in last_k_actions
+                ]
         ):
             return True, f"Failed to parse actions for {k} times"
 
@@ -208,18 +209,18 @@ def early_stop(
     if last_action["action_type"] != ActionTypes.TYPE:
         if len(last_k_actions) >= k:
             if all(
-                [
-                    is_equivalent(action, last_action)
-                    for action in last_k_actions
-                ]
+                    [
+                        is_equivalent(action, last_action)
+                        for action in last_k_actions
+                    ]
             ):
                 return True, f"Same action for {k} times"
 
     else:
         # check the action sequence
         if (
-            sum([is_equivalent(action, last_action) for action in action_seq])
-            >= k
+                sum([is_equivalent(action, last_action) for action in action_seq])
+                >= k
         ):
             return True, f"Same typing action for {k} times"
 
@@ -227,9 +228,9 @@ def early_stop(
 
 
 def test(
-    args: argparse.Namespace,
-    agent: Agent | PromptAgent | TeacherForcingAgent,
-    config_file_list: list[str],
+        args: argparse.Namespace,
+        agent: Agent | PromptAgent | TeacherForcingAgent,
+        config_file_list: list[str],
 ) -> None:
     scores = []
     max_steps = args.max_steps
@@ -267,17 +268,17 @@ def test(
                 if _c["storage_state"]:
                     cookie_file_name = os.path.basename(_c["storage_state"])
                     comb = get_site_comb_from_filepath(cookie_file_name)
-                    temp_dir = tempfile.mkdtemp()
+                    temp_dir = tempfile.mkdtemp(dir=".auth/tmp")
                     # subprocess to renew the cookie
                     subprocess.run(
                         [
-                            "python",
+                            WEBARENA_PYTHON_PATH,
                             "browser_env/auto_login.py",
                             "--auth_folder",
                             temp_dir,
                             "--site_list",
                             *comb,
-                        ]
+                        ],
                     )
                     _c["storage_state"] = f"{temp_dir}/{cookie_file_name}"
                     assert os.path.exists(_c["storage_state"])

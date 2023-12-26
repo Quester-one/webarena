@@ -1,4 +1,3 @@
-"""Script to run end-to-end evaluation on the benchmark"""
 import argparse
 import glob
 import json
@@ -22,7 +21,6 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-
 import openai
 
 from agent import (
@@ -74,7 +72,10 @@ def config() -> argparse.Namespace:
         description="Run end-to-end evaluation on the benchmark"
     )
     parser.add_argument(
-        "--render", action="store_true", help="Render the browser"
+        "--render", help="Render the browser", default=False
+    )
+    parser.add_argument(
+        "--render_screenshot", help="Render the browser", default=True
     )
     parser.add_argument(
         "--slow_mo",
@@ -93,13 +94,13 @@ def config() -> argparse.Namespace:
     )
     parser.add_argument(
         "--current_viewport_only",
-        action="store_true",
+        default=True,
         help="Only use the current viewport for the observation",
     )
     parser.add_argument("--viewport_width", type=int, default=1280)
     parser.add_argument("--viewport_height", type=int, default=720)
-    parser.add_argument("--save_trace_enabled", action="store_true")
-    parser.add_argument("--sleep_after_execution", type=float, default=0.0)
+    parser.add_argument("--save_trace_enabled", default=True)
+    parser.add_argument("--sleep_after_execution", type=float, default=2.0)
 
     parser.add_argument("--max_steps", type=int, default=30)
 
@@ -125,7 +126,8 @@ def config() -> argparse.Namespace:
 
     # lm config
     parser.add_argument("--provider", type=str, default="openai")
-    parser.add_argument("--model", type=str, default="gpt-3.5-turbo-0613")
+    parser.add_argument("--model", type=str, default="gpt-3.5-turbo-0613",
+                        choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'])
     parser.add_argument("--mode", type=str, default="chat")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top_p", type=float, default=0.9)
@@ -156,7 +158,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--test_end_idx", type=int, default=1)
 
     # logging related
-    parser.add_argument("--result_dir", type=str, default="results/result")
+    parser.add_argument("--result_dir", type=str, default=None)
     args = parser.parse_args()
 
     # check the whether the action space is compatible with the observation space
@@ -169,6 +171,70 @@ def config() -> argparse.Namespace:
         )
 
     return args
+
+
+def prepare(args: argparse.Namespace) -> None:
+    # convert prompt python files to json
+    '''
+    在cache建立结果文件夹，有时间戳
+    '''
+    from agent.prompts import to_json
+
+    to_json.run()
+    '''
+    /data/mentianyi/code/webarena/agent/prompts/raw或json，里面是prompt模板，就是把python转化为json文件，不知道为什么要这样做
+    '''
+
+    result_dir = args.result_dir
+    if not result_dir:
+        result_dir = (
+            f"cache/results_{time.strftime('%Y%m%d%H%M%S', time.localtime())}"
+        )
+    if not Path(result_dir).exists():
+        Path(result_dir).mkdir(parents=True, exist_ok=True)
+        args.result_dir = result_dir
+        logger.info(f"Create result dir: {result_dir}")
+
+    if not (Path(result_dir) / "traces").exists():
+        (Path(result_dir) / "traces").mkdir(parents=True)
+
+    with open(os.path.join(result_dir, "log_files.txt"), "a+") as f:
+        f.write(f"{LOG_FILE_NAME}\n")
+
+
+def get_unfinished(config_files: list[str], result_dir: str) -> list[str]:
+    result_files = glob.glob(f"{result_dir}/*.html")
+    task_ids = [
+        os.path.basename(f).split(".")[0].split("_")[1] for f in result_files
+    ]
+    unfinished_configs = []
+    for config_file in config_files:
+        task_id = os.path.basename(config_file).split(".")[0]
+        if task_id not in task_ids:
+            unfinished_configs.append(config_file)
+    return unfinished_configs
+
+
+def get_test_file_list():
+    test_file_list = []
+    st_idx = args.test_start_idx
+    ed_idx = args.test_end_idx
+    for i in range(st_idx, ed_idx):
+        test_file_list.append(f"config_files/{i}.json")
+    if "debug" not in args.result_dir:
+        test_file_list = get_unfinished(test_file_list, args.result_dir)
+    print(f"Total {len(test_file_list)} tasks left")
+    if len(test_file_list) == 0:
+        logger.info("No task left to run")
+    return test_file_list
+
+
+def dump_config(args: argparse.Namespace) -> None:
+    config_file = Path(args.result_dir) / "config.json"
+    if not config_file.exists():
+        with open(config_file, "w") as f:
+            json.dump(vars(args), f, indent=4)
+            logger.info(f"Dump config to {config_file}")
 
 
 def early_stop(
@@ -378,75 +444,10 @@ def test(
     logger.info(f"Average score: {sum(scores) / len(scores)}")
 
 
-def prepare(args: argparse.Namespace) -> None:
-    # convert prompt python files to json
-    from agent.prompts import to_json
-
-    to_json.run()
-
-    # prepare result dir
-    result_dir = args.result_dir
-    if not result_dir:
-        result_dir = (
-            f"cache/results_{time.strftime('%Y%m%d%H%M%S', time.localtime())}"
-        )
-    if not Path(result_dir).exists():
-        Path(result_dir).mkdir(parents=True, exist_ok=True)
-        args.result_dir = result_dir
-        logger.info(f"Create result dir: {result_dir}")
-
-    if not (Path(result_dir) / "traces").exists():
-        (Path(result_dir) / "traces").mkdir(parents=True)
-
-    # log the log file
-    with open(os.path.join(result_dir, "log_files.txt"), "a+") as f:
-        f.write(f"{LOG_FILE_NAME}\n")
-
-
-def get_unfinished(config_files: list[str], result_dir: str) -> list[str]:
-    result_files = glob.glob(f"{result_dir}/*.html")
-    task_ids = [
-        os.path.basename(f).split(".")[0].split("_")[1] for f in result_files
-    ]
-    unfinished_configs = []
-    for config_file in config_files:
-        task_id = os.path.basename(config_file).split(".")[0]
-        if task_id not in task_ids:
-            unfinished_configs.append(config_file)
-    return unfinished_configs
-
-
-def dump_config(args: argparse.Namespace) -> None:
-    config_file = Path(args.result_dir) / "config.json"
-    if not config_file.exists():
-        with open(config_file, "w") as f:
-            json.dump(vars(args), f, indent=4)
-            logger.info(f"Dump config to {config_file}")
-
-
 if __name__ == "__main__":
     args = config()
-    args.sleep_after_execution = 2.0
     prepare(args)
-
-    test_file_list = []
-    st_idx = args.test_start_idx
-    ed_idx = args.test_end_idx
-    for i in range(st_idx, ed_idx):
-        test_file_list.append(f"config_files/{i}.json")
-    if "debug" not in args.result_dir:
-        test_file_list = get_unfinished(test_file_list, args.result_dir)
-
-    if len(test_file_list) == 0:
-        logger.info("No task left to run")
-    else:
-        print(f"Total {len(test_file_list)} tasks left")
-        args.render = False
-        args.render_screenshot = True
-        args.save_trace_enabled = True
-
-        args.current_viewport_only = True
-        dump_config(args)
-
-        agent = construct_agent(args)
-        test(args, agent, test_file_list)
+    test_file_list = get_test_file_list()
+    dump_config(args)
+    agent = construct_agent(args)
+    test(args, agent, test_file_list)

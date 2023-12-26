@@ -106,6 +106,10 @@ class PromptConstructor(object):
                 raise ValueError(
                     f"Huggingface models do not support model_tag {self.lm_config.gen_config['model_tag']}"
                 )
+        elif "google" in self.lm_config.provider:
+            if self.lm_config.mode == "chat":
+                #TODO:补充gemini接口
+                pass
         else:
             raise NotImplementedError(
                 f"Provider {self.lm_config.provider} not implemented"
@@ -235,6 +239,7 @@ class CoTPromptConstructor(PromptConstructor):
         page = state_info["info"]["page"]
         url = page.url
         previous_action_str = meta_data["action_history"][-1]
+        #历史记录只使用上一个动作
         current = template.format(
             objective=intent,
             url=self.map_url_to_real(url),
@@ -243,7 +248,7 @@ class CoTPromptConstructor(PromptConstructor):
         )
 
         assert all([f"{{k}}" not in current for k in keywords])
-
+        #把prompt改成llm输入的格式
         prompt = self.get_lm_api_input(intro, examples, current)
         return prompt
 

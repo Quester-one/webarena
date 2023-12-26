@@ -42,6 +42,10 @@ def call_llm(
             raise ValueError(
                 f"OpenAI models do not support mode {lm_config.mode}"
             )
+    elif lm_config.provider == "google":
+        if lm_config.mode == "chat":
+            pass
+            #TODO:补全gemini代码
     elif lm_config.provider == "huggingface":
         assert isinstance(prompt, str)
         response = generate_from_huggingface_completion(

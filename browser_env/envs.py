@@ -76,15 +76,15 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
     @beartype
     def __init__(
-        self,
-        max_page_length: int = 8192,
-        headless: bool = True,
-        slow_mo: int = 0,
-        observation_type: str = "html",
-        current_viewport_only: bool = False,
-        viewport_size: ViewportSize = {"width": 1280, "height": 720},
-        save_trace_enabled: bool = False,
-        sleep_after_execution: float = 0.0,
+            self,
+            max_page_length: int = 8192,
+            headless: bool = True,
+            slow_mo: int = 0,
+            observation_type: str = "html",
+            current_viewport_only: bool = False,
+            viewport_size: ViewportSize = {"width": 1280, "height": 720},
+            save_trace_enabled: bool = False,
+            sleep_after_execution: float = 0.0,
     ):
         # TODO: make Space[Action] = ActionSpace
         self.action_space = get_action_space()  # type: ignore[assignment]
@@ -146,6 +146,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
         start_url = instance_config.get("start_url", None)
         geolocation = instance_config.get("geolocation", None)
 
+        # 创建浏览器实例，viewport_size是页面大小，geolocation是设置经纬度我的所有实验设置为None，storage_state是任务描述的json文件
         self.context = self.browser.new_context(
             viewport=self.viewport_size,
             storage_state=storage_state,
@@ -153,7 +154,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             device_scale_factor=1,
         )
         if self.save_trace_enabled:
-            self.context.tracing.start(screenshots=True, snapshots=True)
+            self.context.tracing.start(screenshots=True, snapshots=True)#playwright自带的追踪记录，会打包成zip文件
         if start_url:
             start_urls = start_url.split(" |AND| ")
             for url in start_urls:
@@ -190,10 +191,10 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
 
     @beartype
     def reset(
-        self,
-        *,
-        seed: int | None = None,
-        options: dict[str, str] | None = None,
+            self,
+            *,
+            seed: int | None = None,
+            options: dict[str, str] | None = None,
     ) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Reset the environment.
@@ -236,7 +237,7 @@ class ScriptBrowserEnv(Env[dict[str, Observation], Action]):
             self.context_manager.__exit__()
 
     def step(
-        self, action: Action
+            self, action: Action
     ) -> tuple[dict[str, Observation], float, bool, bool, dict[str, Any]]:
         if not self.reset_finished:
             raise RuntimeError("Call reset first before calling step.")

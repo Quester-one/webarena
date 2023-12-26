@@ -11,5 +11,6 @@ flask
 tornado
 matplotlib==3.2.1
 nltk
+google-generativeai
 text-generation
 transformers==4.33.2

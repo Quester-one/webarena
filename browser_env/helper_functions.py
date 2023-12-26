@@ -111,7 +111,13 @@ def get_action_description(
 
 
 class RenderHelper(object):
-    """Helper class to render text and image observations and meta data in the trajectory"""
+    """
+    Helper class to render text and image observations and meta data in the trajectory
+    这个类是把轨迹用HTML的格式存储下来，方便结果的可视化
+    __init__
+        输入一个config文件，这个config文件是config_files/config__taskid.json里，是原始任务
+        输出render_taskid.html，位置在cache/results_时间戳/render_taskid.html，是历史轨迹
+    """
 
     def __init__(
         self, config_file: str, result_dir: str, action_set_tag: str

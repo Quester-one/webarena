@@ -125,7 +125,7 @@ class PromptAgent(Agent):
         lm_config = self.lm_config
         n = 0
         while True:
-            response = call_llm(lm_config, prompt)
+            response = call_llm(lm_config, prompt)#调用接口
             force_prefix = self.prompt_constructor.instruction[
                 "meta_data"
             ].get("force_prefix", "")
@@ -158,6 +158,7 @@ class PromptAgent(Agent):
 
 
 def construct_agent(args: argparse.Namespace) -> Agent:
+    #把llm的参数全部存储在config里面
     llm_config = lm_config.construct_llm_config(args)
 
     agent: Agent

@@ -52,6 +52,9 @@ def construct_llm_config(args: argparse.Namespace) -> LMConfig:
         llm_config.gen_config["max_obs_length"] = args.max_obs_length
         llm_config.gen_config["model_endpoint"] = args.model_endpoint
         llm_config.gen_config["max_retry"] = args.max_retry
+    elif args.provider=="google":
+        #TODO:补全gemini系列的配置参数
+        pass
     else:
         raise NotImplementedError(f"provider {args.provider} not implemented")
     return llm_config

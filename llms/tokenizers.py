@@ -14,6 +14,8 @@ class Tokenizer(object):
             self.tokenizer.add_special_tokens = False  # type: ignore[attr-defined]
             self.tokenizer.add_bos_token = False  # type: ignore[attr-defined]
             self.tokenizer.add_eos_token = False  # type: ignore[attr-defined]
+        elif provider=="google":
+            self.tokenizer=None
         else:
             raise NotImplementedError
 

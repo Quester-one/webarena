@@ -2,6 +2,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any, TypedDict
+from PIL import Image
 
 from browser_env import Action, ActionParsingError, Trajectory
 from browser_env.env_config import URL_MAPPINGS
@@ -22,21 +23,32 @@ class Instruction(TypedDict):
 
 class PromptConstructor(object):
     def __init__(
-        self,
-        instruction_path: str | Path,
-        lm_config: lm_config.LMConfig,
-        tokenizer: Tokenizer,
+            self,
+            args,
+            instruction_path: str | Path,
+            lm_config: lm_config.LMConfig,
+            tokenizer: Tokenizer,
     ):
         self.instruction_path = Path(instruction_path)
         self.obs_modality = "text"
         self.lm_config = lm_config
         instruction = json.load(open(self.instruction_path))
         instruction["examples"] = [tuple(e) for e in instruction["examples"]]
+        if args.imageassist:
+            examples_num = len(instruction["examples"])
+            image_list_path = [str(self.instruction_path.parent) + "/example_{}.png".format(i) for i in
+                               range(examples_num)]
+            for index, path in enumerate(image_list_path):
+                instruction["examples"][index] = list(instruction["examples"][index])
+                instruction["examples"][index][0] = (
+                    Image.open(image_list_path[index]), instruction["examples"][index][0])
+                instruction["examples"][index] = tuple(instruction["examples"][index])
+
         self.instruction: Instruction = instruction
         self.tokenizer = tokenizer
 
     def get_lm_api_input(
-        self, intro: str, examples: list[tuple[str, str]], current: str
+            self, intro: str, examples: list[tuple[str, str]], current: str
     ) -> APIInput:
 
         """Return the require format for an API"""
@@ -85,11 +97,11 @@ class PromptConstructor(object):
                     BOS, EOS = "<s>", "</s>"
                     # adding the system message to be the starting of the first example
                     examples = [
-                        (
-                            B_SYS + intro + E_SYS + examples[0][0],
-                            examples[0][1],
-                        )
-                    ] + examples[1:]
+                                   (
+                                       B_SYS + intro + E_SYS + examples[0][0],
+                                       examples[0][1],
+                                   )
+                               ] + examples[1:]
                     message = "".join(
                         [
                             f"{BOS}{B_INST} {x.strip()} {E_INST} {y.strip()} {EOS}"
@@ -132,10 +144,11 @@ class PromptConstructor(object):
             )
 
     def construct(
-        self,
-        trajectory: Trajectory,
-        intent: str,
-        meta_data: dict[str, Any] = {},
+            self,
+            args,
+            trajectory: Trajectory,
+            intent: str,
+            meta_data: dict[str, Any] = {},
     ) -> APIInput:
         raise NotImplementedError
 
@@ -169,18 +182,20 @@ class DirectPromptConstructor(PromptConstructor):
     """The agent will direct predict the action"""
 
     def __init__(
-        self,
-        instruction_path: str | Path,
-        lm_config: lm_config.LMConfig,
-        tokenizer: Tokenizer,
+            self,
+            args,
+            instruction_path: str | Path,
+            lm_config: lm_config.LMConfig,
+            tokenizer: Tokenizer,
     ):
-        super().__init__(instruction_path, lm_config, tokenizer)
+        super().__init__(args, instruction_path, lm_config, tokenizer)
 
     def construct(
-        self,
-        trajectory: Trajectory,
-        intent: str,
-        meta_data: dict[str, Any] = {},
+            self,
+            args,
+            trajectory: Trajectory,
+            intent: str,
+            meta_data: dict[str, Any] = {},
     ) -> APIInput:
         """Construct prompt given the trajectory"""
         intro = self.instruction["intro"]
@@ -227,19 +242,21 @@ class CoTPromptConstructor(PromptConstructor):
     """The agent will perform step-by-step reasoning before the answer"""
 
     def __init__(
-        self,
-        instruction_path: str | Path,
-        lm_config: lm_config.LMConfig,
-        tokenizer: Tokenizer,
+            self,
+            args,
+            instruction_path: str | Path,
+            lm_config: lm_config.LMConfig,
+            tokenizer: Tokenizer,
     ):
-        super().__init__(instruction_path, lm_config, tokenizer)
+        super().__init__(args, instruction_path, lm_config, tokenizer)
         self.answer_phrase = self.instruction["meta_data"]["answer_phrase"]
 
     def construct(
-        self,
-        trajectory: Trajectory,
-        intent: str,
-        meta_data: dict[str, Any] = {},
+            self,
+            args,
+            trajectory: Trajectory,
+            intent: str,
+            meta_data: dict[str, Any] = {},
     ) -> APIInput:
         intro = self.instruction["intro"]
         examples = self.instruction["examples"]
@@ -255,7 +272,7 @@ class CoTPromptConstructor(PromptConstructor):
         page = state_info["info"]["page"]
         url = page.url
         previous_action_str = meta_data["action_history"][-1]
-        #历史记录只使用上一个动作
+        # 历史记录只使用上一个动作
         current = template.format(
             objective=intent,
             url=self.map_url_to_real(url),
@@ -264,7 +281,10 @@ class CoTPromptConstructor(PromptConstructor):
         )
 
         assert all([f"{{k}}" not in current for k in keywords])
-        #把prompt改成llm输入的格式
+        # 如果需要图片辅助，这里加上当前的图像
+        if args.imageassist:
+            current = (Image.fromarray(state_info["observation"]["image"][:, :, :3]), current)
+        # 把prompt改成llm输入的格式
         prompt = self.get_lm_api_input(intro, examples, current)
         return prompt
 

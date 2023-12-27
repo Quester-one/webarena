@@ -66,6 +66,18 @@ def remove_key_from_dicts_list(original_list, key_to_remove):
     return new_list
 
 
+def flatten_tuple_list(original_list):
+    new_list = []
+
+    for item in original_list:
+        if isinstance(item, tuple):
+            new_list.extend(item)
+        else:
+            new_list.append(item)
+
+    return new_list
+
+
 @retry_with_exponential_backoff
 def generate_from_google_chat_completion(
         messages: list[dict[str, str]],
@@ -84,8 +96,12 @@ def generate_from_google_chat_completion(
 
     gemini_model = genai.GenerativeModel(model_name=model)
     messages = remove_key_from_dicts_list(messages, "name")
-    messages.insert(1, {"role": "model", "parts": [""]})
-    response = gemini_model.generate_content(contents=messages,
+    # messages.insert(1, {"role": "model", "parts": [""]})
+    new_messages = []
+    for message in messages:
+        new_messages.append(message["parts"][0])
+    new_messages = flatten_tuple_list(new_messages)
+    response = gemini_model.generate_content(contents=new_messages,
                                              generation_config=genai.types.GenerationConfig(
                                                  temperature=temperature,
                                                  max_output_tokens=max_tokens,

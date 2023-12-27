@@ -84,7 +84,9 @@ def config() -> argparse.Namespace:
                         help="不动.Action type.输出动作的形式，id_accessibility_tree是简化版，playwright是html版本",
                         choices=["id_accessibility_tree", "playwright"])
     parser.add_argument("--observation_type", choices=["accessibility_tree", "html", "image"],
-                        default="accessibility_tree", help="不动.环境的返回数据类型，主要是html和accessibility两种类型之间的区分")
+                        default="accessibility_tree", help="不动.环境的返回数据类型，主要是html和accessibility两种类型之间的区分,"
+                                                           "后面发现image类型不能作为输入，只能输入前两种文本，图像是附带的，"
+                                                           "playwright必须和html匹配，id_accessibility_tree必须和accessibility_tree匹配")
     parser.add_argument("--current_viewport_only", default=True,
                         help="不动.Only use the current viewport for the observation.True是只使用范围内的文本信息，False是不在范围内的直接被截断")
     parser.add_argument("--save_trace_enabled", default=True, help="不动.是否使用追踪记录，True就是使用，会自动保存在cache下的trace的zip里面")
@@ -106,10 +108,6 @@ def config() -> argparse.Namespace:
                         help="prompt模板的路径，总共有5种")
 
     # lm config
-    parser.add_argument("--provider", type=str, default="google", choices=["openai", "huggingface", "google"],
-                        help="模型的发布机构，用于选择配置参数的字典")
-    parser.add_argument("--model", type=str, default='gemini-pro',
-                        choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'], help="具体使用的模型")
     parser.add_argument("--mode", type=str, default="chat", choices=["chat", "completion"],
                         help="不动.chat是聊天型，completion是补全型，现在用的几个模型都是chat型")
     parser.add_argument("--temperature", type=float, default=1.0, help="没看懂")
@@ -122,6 +120,12 @@ def config() -> argparse.Namespace:
     parser.add_argument("--max_obs_length", type=int, default=1920,
                         help="when not zero, will truncate the observation to this length before feeding to the model", )
     parser.add_argument("--model_endpoint", help="huggingface model endpoint", type=str, default="", )
+    parser.add_argument("--provider", type=str, default="google", choices=["openai", "huggingface", "google"],
+                        help="模型的发布机构，用于选择配置参数的字典")
+    parser.add_argument("--model", type=str, default='gemini-pro',
+                        choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'], help="具体使用的模型")
+    parser.add_argument("--imageassist", type=str, default=False,
+                        help="True是使用图像信息辅助，使用gemini-pro-vision时为True，其他为False")
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
@@ -132,7 +136,6 @@ def config() -> argparse.Namespace:
     args = parser.parse_args()
 
     # check the whether the action space is compatible with the observation space
-    # 这部分不知道为什么要这样做
     if (
             args.action_set_tag == "id_accessibility_tree"
             and args.observation_type != "accessibility_tree"
@@ -254,7 +257,7 @@ def test(
                 else:
                     try:
                         # 组装prompt，转化成输入格式，得到输出，解析答案
-                        action = agent.next_action(trajectory, intent, meta_data=meta_data)
+                        action = agent.next_action(args=args, trajectory=trajectory, intent=intent, meta_data=meta_data)
                     except ValueError as e:
                         action = create_stop_action(f"ERROR: {str(e)}")
                 trajectory.append(action)

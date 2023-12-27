@@ -32,14 +32,14 @@ class Agent:
         pass
 
     def next_action(
-        self, trajectory: Trajectory, intent: str, meta_data: Any
+            self, trajectory: Trajectory, intent: str, meta_data: Any
     ) -> Action:
         """Predict the next action given the observation"""
         raise NotImplementedError
 
     def reset(
-        self,
-        test_config_file: str,
+            self,
+            test_config_file: str,
     ) -> None:
         raise NotImplementedError
 
@@ -80,14 +80,14 @@ class TeacherForcingAgent(Agent):
         self.actions: list[Action] = actions
 
     def next_action(
-        self, trajectory: Trajectory, intent: str, meta_data: Any
+            self, trajectory: Trajectory, intent: str, meta_data: Any
     ) -> Action:
         """Predict the next action given the observation"""
         return self.actions.pop(0)
 
     def reset(
-        self,
-        test_config_file: str,
+            self,
+            test_config_file: str,
     ) -> None:
         with open(test_config_file) as f:
             ref_actions = json.load(f)["reference_action_sequence"]
@@ -102,10 +102,10 @@ class PromptAgent(Agent):
 
     @beartype
     def __init__(
-        self,
-        action_set_tag: str,
-        lm_config: lm_config.LMConfig,
-        prompt_constructor: PromptConstructor,
+            self,
+            action_set_tag: str,
+            lm_config: lm_config.LMConfig,
+            prompt_constructor: PromptConstructor,
     ) -> None:
         super().__init__()
         self.lm_config = lm_config
@@ -117,15 +117,15 @@ class PromptAgent(Agent):
 
     @beartype
     def next_action(
-        self, trajectory: Trajectory, intent: str, meta_data: dict[str, Any]
+            self, args, trajectory: Trajectory, intent: str, meta_data: dict[str, Any]
     ) -> Action:
-        prompt = self.prompt_constructor.construct(
-            trajectory, intent, meta_data
-        )
+        prompt = self.prompt_constructor.construct(args,
+                                                   trajectory, intent, meta_data
+                                                   )
         lm_config = self.lm_config
         n = 0
         while True:
-            response = call_llm(lm_config, prompt)#调用接口
+            response = call_llm(lm_config, prompt)  # 调用接口
             force_prefix = self.prompt_constructor.instruction[
                 "meta_data"
             ].get("force_prefix", "")
@@ -158,7 +158,7 @@ class PromptAgent(Agent):
 
 
 def construct_agent(args: argparse.Namespace) -> Agent:
-    #把llm的参数全部存储在config里面
+    # 把llm的参数全部存储在config里面
     llm_config = lm_config.construct_llm_config(args)
 
     agent: Agent
@@ -169,7 +169,7 @@ def construct_agent(args: argparse.Namespace) -> Agent:
             constructor_type = json.load(f)["meta_data"]["prompt_constructor"]
         tokenizer = Tokenizer(args.provider, args.model)
         prompt_constructor = eval(constructor_type)(
-            args.instruction_path, lm_config=llm_config, tokenizer=tokenizer
+            args=args, instruction_path=args.instruction_path, lm_config=llm_config, tokenizer=tokenizer
         )
         agent = PromptAgent(
             action_set_tag=args.action_set_tag,

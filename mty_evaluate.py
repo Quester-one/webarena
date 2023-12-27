@@ -3,7 +3,7 @@ import glob
 import json
 import logging
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, \
-    https_proxy, OPENAI_API_KEY, WEBARENA_PYTHON_PATH
+    https_proxy, OPENAI_API_KEY, WEBARENA_PYTHON_PATH, GEMINI_API_KEY
 import os
 
 os.environ["SHOPPING"] = SHOPPING
@@ -16,6 +16,7 @@ os.environ["HOMEPAGE"] = HOMEPAGE
 os.environ["http_proxy"] = http_proxy
 os.environ["https_proxy"] = https_proxy
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
 import random
 import subprocess
 import tempfile
@@ -105,9 +106,9 @@ def config() -> argparse.Namespace:
                         help="prompt模板的路径，总共有5种")
 
     # lm config
-    parser.add_argument("--provider", type=str, default="openai", choices=["openai", "huggingface", "google"],
+    parser.add_argument("--provider", type=str, default="google", choices=["openai", "huggingface", "google"],
                         help="模型的发布机构，用于选择配置参数的字典")
-    parser.add_argument("--model", type=str, default="gpt-3.5-turbo-0613",
+    parser.add_argument("--model", type=str, default='gemini-pro',
                         choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'], help="具体使用的模型")
     parser.add_argument("--mode", type=str, default="chat", choices=["chat", "completion"],
                         help="不动.chat是聊天型，completion是补全型，现在用的几个模型都是chat型")
@@ -124,7 +125,7 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=1)
+    parser.add_argument("--test_end_idx", type=int, default=10)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")

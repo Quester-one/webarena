@@ -5,6 +5,7 @@ from llms import (
     generate_from_huggingface_completion,
     generate_from_openai_chat_completion,
     generate_from_openai_completion,
+    generate_from_google_chat_completion,
     lm_config,
 )
 
@@ -12,8 +13,8 @@ APIInput = str | list[Any] | dict[str, Any]
 
 
 def call_llm(
-    lm_config: lm_config.LMConfig,
-    prompt: APIInput,
+        lm_config: lm_config.LMConfig,
+        prompt: APIInput,
 ) -> str:
     response: str
     if lm_config.provider == "openai":
@@ -44,8 +45,16 @@ def call_llm(
             )
     elif lm_config.provider == "google":
         if lm_config.mode == "chat":
-            pass
-            #TODO:补全gemini代码
+            assert isinstance(prompt, list)
+            response = generate_from_google_chat_completion(
+                messages=prompt,
+                model=lm_config.model,
+                temperature=lm_config.gen_config["temperature"],
+                top_p=lm_config.gen_config["top_p"],
+                context_length=lm_config.gen_config["context_length"],
+                max_tokens=lm_config.gen_config["max_tokens"],
+                stop_token=None,
+            )
     elif lm_config.provider == "huggingface":
         assert isinstance(prompt, str)
         response = generate_from_huggingface_completion(

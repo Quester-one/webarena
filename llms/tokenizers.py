@@ -14,8 +14,9 @@ class Tokenizer(object):
             self.tokenizer.add_special_tokens = False  # type: ignore[attr-defined]
             self.tokenizer.add_bos_token = False  # type: ignore[attr-defined]
             self.tokenizer.add_eos_token = False  # type: ignore[attr-defined]
-        elif provider=="google":
-            self.tokenizer=None
+        elif provider == "google":
+            # 这里使用和openai相同的tokenizer做截断，用"gpt-3.5-turbo-0613"的替代
+            self.tokenizer = tiktoken.encoding_for_model("gpt-3.5-turbo-0613")
         else:
             raise NotImplementedError
 

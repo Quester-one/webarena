@@ -108,8 +108,24 @@ class PromptConstructor(object):
                 )
         elif "google" in self.lm_config.provider:
             if self.lm_config.mode == "chat":
-                #TODO:补充gemini接口
-                pass
+                message = [{"role": "user", "parts": [intro]}]
+                for (x, y) in examples:
+                    message.append(
+                        {
+                            "role": "user",
+                            "name": "example_user",
+                            "parts": [x],
+                        }
+                    )
+                    message.append(
+                        {
+                            "role": "model",
+                            "name": "example_assistant",
+                            "parts": [y],
+                        }
+                    )
+                message.append({"role": "user", "parts": [current]})
+                return message
         else:
             raise NotImplementedError(
                 f"Provider {self.lm_config.provider} not implemented"

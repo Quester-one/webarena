@@ -2,15 +2,8 @@
 import argparse
 import glob
 import os
-import time
-from concurrent.futures import ThreadPoolExecutor
-from itertools import combinations
-from pathlib import Path
-
-from playwright.sync_api import sync_playwright
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, https_proxy, \
     OPENAI_API_KEY, proxy_server, proxy_username, proxy_password
-from browser_env.env_config import ACCOUNTS
 
 os.environ["SHOPPING"] = SHOPPING
 os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
@@ -22,6 +15,12 @@ os.environ["HOMEPAGE"] = HOMEPAGE
 os.environ["http_proxy"] = http_proxy
 os.environ["https_proxy"] = https_proxy
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+import time
+from concurrent.futures import ThreadPoolExecutor
+from itertools import combinations
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+from browser_env.env_config import ACCOUNTS
 
 HEADLESS = True
 SLOW_MO = 0

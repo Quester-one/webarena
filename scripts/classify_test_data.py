@@ -62,10 +62,10 @@ def create_classified_data(sites_dict, root_path):
 
 
 if __name__ == "__main__":
-    json_data = read_json_files_in_folder("/data/mentianyi/code/webarena/config_files/")
+    json_data = read_json_files_in_folder("../config_files/")
     sites_list = extract_values_by_key_set(json_data, 'sites')
     sites_count = count_tuples(sites_list)
     sites_dict = group_dicts_by_key(json_data, "sites")
-    create_folder_if_not_exists("/data/mentianyi/code/webarena/config_files/classified_data/")
-    create_classified_data(sites_dict, "/data/mentianyi/code/webarena/config_files/classified_data/")
+    create_folder_if_not_exists("../config_files/classified_data/")
+    create_classified_data(sites_dict, "../config_files/classified_data/")
     print("end")

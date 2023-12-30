@@ -96,8 +96,15 @@ def config() -> argparse.Namespace:
                         help="文本和图片会同时被截取，current_viewport_only为True时，剩余的被截断")
     parser.add_argument("--viewport_height", type=int, default=720,
                         help="文本和图片会同时被截取，current_viewport_only为True时，剩余的被截断")
+    parser.add_argument("--specific_dataset", default="classified_data/shopping_admin", help="指定选用的数据集子集",
+                        choices=["classified_data/gitlab", "classified_data/map", "classified_data/reddit",
+                                 "classified_data/shopping", "classified_data/shopping_admin",
+                                 "classified_data/gitlab+reddit",
+                                 "classified_data/gitlab+wikipedia", "classified_data/map+shopping_admin",
+                                 "classified_data/map+wikipedia", "classified_data/reddit+shopping"])
 
     # agent config
+
     parser.add_argument("--agent_type", type=str, default="prompt", choices=["teacher_forcing", "prompt"],
                         help="不动.推断时候，teacher_forcing是历史信息使用真值，promot是使用误差累积的方式，本实验全部使用prompt")
     parser.add_argument("--parsing_failure_th", type=int, default=3,
@@ -129,7 +136,7 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=10)
+    parser.add_argument("--test_end_idx", type=int, default=50)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")
@@ -184,7 +191,7 @@ def get_test_file_list():
     st_idx = args.test_start_idx
     ed_idx = args.test_end_idx
     for i in range(st_idx, ed_idx):
-        test_file_list.append(f"config_files/{i}.json")
+        test_file_list.append(os.path.join("config_files", args.specific_dataset, "{}.json".format(i)))
     if "debug" not in args.result_dir:
         test_file_list = get_unfinished(test_file_list, args.result_dir)
     print(f"Total {len(test_file_list)} tasks left")
@@ -394,6 +401,8 @@ def init_config(config_file):
         if _c["storage_state"]:
             cookie_file_name = os.path.basename(_c["storage_state"])  # 加载任务信息里面，原始认证数据的存储位置
             comb = get_site_comb_from_filepath(cookie_file_name)  # 获取该网站的名字
+            if not os.path.exists(".auth/tmp"):
+                os.makedirs(".auth/tmp")
             temp_dir = tempfile.mkdtemp(dir=".auth/tmp")  # 建立临时存储认证，然后执行认证得到新的认证，但是value和expires会发生变化，不清楚原因
             # subprocess to renew the cookie
             subprocess.run(

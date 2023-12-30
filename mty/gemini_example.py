@@ -10,8 +10,8 @@ os.environ["https_proxy"] = https_proxy
 genai.configure(api_key=GEMINI_API_KEY)
 
 model = genai.GenerativeModel('gemini-pro-vision')
-img1 = PIL.Image.open('./../image_data/dog.jpg')
-img2 = PIL.Image.open('./../image_data/cat.jpg')
+img1 = PIL.Image.open('image_data/dog.jpg')
+img2 = PIL.Image.open('image_data/cat.jpg')
 
 numpy_array = np.random.randint(0, 255, size=(100, 100, 3), dtype=np.uint8)
 image = Image.fromarray(numpy_array)

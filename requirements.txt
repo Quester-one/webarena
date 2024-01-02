@@ -15,3 +15,5 @@ google-generativeai
 text-generation
 scikit-learn
 transformers==4.33.2
+sentencepiece
+accelerate

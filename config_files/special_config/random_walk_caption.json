@@ -1,0 +1,5 @@
+{
+    "storage_state": "./.auth/shopping_admin_state.json",
+    "start_url": "http://210.75.240.137:13192/admin",
+    "geolocation": null
+}

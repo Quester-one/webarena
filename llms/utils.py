@@ -12,10 +12,10 @@ from llms import (
 APIInput = str | list[Any] | dict[str, Any]
 
 
-def call_llm(
-        lm_config: lm_config.LMConfig,
-        prompt: APIInput,
-) -> str:
+def call_llm(model, tokenizer,
+             lm_config: lm_config.LMConfig,
+             prompt: APIInput,
+             ) -> str:
     response: str
     if lm_config.provider == "openai":
         if lm_config.mode == "chat":
@@ -59,6 +59,8 @@ def call_llm(
         assert isinstance(prompt, str)
         response = generate_from_huggingface_completion(
             prompt=prompt,
+            model=model,
+            tokenizer=tokenizer,
             model_endpoint=lm_config.gen_config["model_endpoint"],
             temperature=lm_config.gen_config["temperature"],
             top_p=lm_config.gen_config["top_p"],

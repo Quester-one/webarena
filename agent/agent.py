@@ -117,7 +117,7 @@ class PromptAgent(Agent):
 
     @beartype
     def next_action(
-            self, args, trajectory: Trajectory, intent: str, meta_data: dict[str, Any]
+            self, args, model,tokenizer,trajectory: Trajectory, intent: str, meta_data: dict[str, Any]
     ) -> Action:
         prompt = self.prompt_constructor.construct(args,
                                                    trajectory, intent, meta_data
@@ -125,7 +125,7 @@ class PromptAgent(Agent):
         lm_config = self.lm_config
         n = 0
         while True:
-            response = call_llm(lm_config, prompt)  # 调用接口
+            response = call_llm(model,tokenizer,lm_config, prompt)  # 调用接口
             force_prefix = self.prompt_constructor.instruction[
                 "meta_data"
             ].get("force_prefix", "")

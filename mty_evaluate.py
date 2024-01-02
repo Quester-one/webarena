@@ -1,6 +1,8 @@
 import argparse
 import glob
 import json
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 import logging
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, \
     https_proxy, OPENAI_API_KEY, WEBARENA_PYTHON_PATH, GEMINI_API_KEY
@@ -17,6 +19,7 @@ os.environ["http_proxy"] = http_proxy
 os.environ["https_proxy"] = https_proxy
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 os.environ["GEMINI_API_KEY"] = GEMINI_API_KEY
+os.environ['CUDA_VISIBLE_DEVICES'] = "8,9"
 import random
 import subprocess
 import tempfile
@@ -127,16 +130,16 @@ def config() -> argparse.Namespace:
     parser.add_argument("--max_obs_length", type=int, default=1920,
                         help="when not zero, will truncate the observation to this length before feeding to the model", )
     parser.add_argument("--model_endpoint", help="huggingface model endpoint", type=str, default="", )
-    parser.add_argument("--provider", type=str, default="google", choices=["openai", "huggingface", "google"],
+    parser.add_argument("--provider", type=str, default="huggingface", choices=["openai", "huggingface", "google"],
                         help="模型的发布机构，用于选择配置参数的字典")
-    parser.add_argument("--model", type=str, default='gemini-pro',
+    parser.add_argument("--model", type=str, default='meta-llama/Llama-2-7b-chat-hf',
                         choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'], help="具体使用的模型")
     parser.add_argument("--imageassist", type=str, default=False,
                         help="True是使用图像信息辅助，使用gemini-pro-vision时为True，其他为False")
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=50)
+    parser.add_argument("--test_end_idx", type=int, default=100)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")
@@ -236,6 +239,15 @@ def test(
         save_trace_enabled=args.save_trace_enabled,
         sleep_after_execution=args.sleep_after_execution,
     )
+    model = None
+    tokenizer = None
+    if args.provider == "huggingface":
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+        tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     for config_file in config_file_list:
         '''
@@ -264,7 +276,8 @@ def test(
                 else:
                     try:
                         # 组装prompt，转化成输入格式，得到输出，解析答案
-                        action = agent.next_action(args=args, trajectory=trajectory, intent=intent, meta_data=meta_data)
+                        action = agent.next_action(args=args, model=model, tokenizer=tokenizer, trajectory=trajectory,
+                                                   intent=intent, meta_data=meta_data)
                     except ValueError as e:
                         action = create_stop_action(f"ERROR: {str(e)}")
                 trajectory.append(action)

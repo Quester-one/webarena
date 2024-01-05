@@ -3,6 +3,9 @@ import numpy as np
 import json
 from config_private import WEBARENA_PYTHON_PATH, http_proxy, https_proxy
 import os
+import re
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
 os.environ["http_proxy"] = http_proxy
 os.environ["https_proxy"] = https_proxy
@@ -124,18 +127,6 @@ def get_standard_action(action_name, element_id):
     return action
 
 
-def dfs(obs, info, env):
-    while True:
-        action_name = "click"
-        element_id = "95"
-        action = get_standard_action(action_name=action_name, element_id=element_id)
-        if action["action_type"] == ActionTypes.STOP:
-            break
-        obs, _, terminated, _, info = env.step(action)
-        if terminated:
-            break
-
-
 def init_config(config_file):
     with open(config_file) as f:
         _c = json.load(f)
@@ -164,6 +155,109 @@ def init_config(config_file):
     return config_file
 
 
+def extract_text_values(dictionary_list):
+    text_values = []
+    for element_id, my_dict in dictionary_list.items():
+        match = re.search(r'link \'(.+?)\'', my_dict["text"])
+        if match:
+            text_values.append(match.group(0))
+    return text_values
+
+
+def display_image(img_obs):
+    plt.figure(figsize=(13, 13))
+    plt.imshow(img_obs)
+    plt.axis('off')
+    plt.show()
+
+
+def get_id_by_name(info, name):
+    info_dict = info['observation_metadata']["text"]['obs_nodes_info']
+    for key, value in info_dict.items():
+        if name in value["text"]:
+            return key
+
+
+def get_name_by_url(graph, url):
+    for key, value in graph.items():
+        if value["url"] == url:
+            return key
+
+
+def find_element_positions(matrix, target):
+    positions = []
+    for i, row in enumerate(matrix):
+        for j, element in enumerate(row):
+            if element == target:
+                positions.append((i, j))
+    return positions
+
+
+class Graph:
+    def __init__(self):
+        self.graph = defaultdict(dict)
+        self.global_url = set()  # 已经看到的url
+        self.global_name = set()  # 已经看到的节点
+        self.visited_name = set()  # 已经探索到的节点
+
+    def dfs(self, start, obs, info, env):
+        go_back_flag=False
+        if start not in self.graph:
+            raw_element_list = info['observation_metadata']["text"]["obs_nodes_info"]
+            text_values = extract_text_values(raw_element_list)
+            # 删除复位元素
+            text_values = [item for item in text_values if 'link \'Magento Admin Panel\'' not in item]
+            img_obs = obs["image"]
+            display_image(img_obs)
+            if info["page"].url not in self.global_url:
+                go_back_flag = True
+                self.global_url.add(info["page"].url)
+                self.global_name.update(set(text_values))
+                self.graph[start]["url"] = info["page"].url
+                self.graph[start]["sub_website"] = [[item] for item in text_values]
+            else:
+                name = get_name_by_url(graph=self.graph, url=info["page"].url)
+                clean_text_values_set = set(text_values) - self.global_name
+                self.global_name.update(set(text_values))
+                # 把列表转成链的形式
+                # 说明网页url没有变，所以能找到他的主页名字
+                positions = find_element_positions(self.graph[name]["sub_website"], start)
+                for position in positions:
+                    if len(clean_text_values_set) == 0:
+                        self.graph[name]["sub_website"][position[0]].extend(["end"])
+
+        print(start, end=' \n')
+        self.visited_name.add(start)
+        if start in self.graph:
+            for neighbor_list in self.graph[start]['sub_website']:
+                for neighbor in neighbor_list:
+                    if neighbor not in self.visited_name and neighbor!="end":
+                        action_name = "click"
+                        element_id = get_id_by_name(info=info, name=neighbor)
+                        action = get_standard_action(action_name=action_name, element_id=element_id)
+                        obs, _, _, _, info = env.step(action)
+                        go_back_flag=self.dfs(neighbor, obs, info, env)
+                        if go_back_flag:
+                            action_name = "go_back"
+                            action = get_standard_action(action_name=action_name, element_id=None)
+                            obs, _, _, _, info = env.step(action)
+        return go_back_flag
+
+
+def dfs_method(obs, info, env):
+    graph = Graph()
+    graph.dfs(start="homepage", obs=obs, info=info, env=env)
+    # while True:
+    #     action_name = "click"
+    #     element_id = "95"
+    #     action = get_standard_action(action_name=action_name, element_id=element_id)
+    #     if action["action_type"] == ActionTypes.STOP:
+    #         break
+    #     obs, _, terminated, _, info = env.step(action)
+    #     if terminated:
+    #         break
+
+
 if __name__ == "__main__":
     '''
     动作空间说明
@@ -190,15 +284,10 @@ if __name__ == "__main__":
     例如CoT+```click [1234]```
         
     环境：
-    shopping_admin:环境比较简单，click,scroll,go_back,go_forward似乎就能遍历所有的页面
-    
-    
-    
-    
-    
+    shopping_admin:环境比较简单，click,scroll,go_back,go_forward似乎就能遍历所有的页面.操作元素认为跳转的页面有link  
     '''
     args = config()
     env = get_env()
     config_file = init_config(args.config_file)
     obs, info = env.reset(options={"config_file": config_file})
-    dfs(obs, info, env)
+    dfs_method(obs, info, env)

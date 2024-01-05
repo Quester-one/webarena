@@ -130,16 +130,16 @@ def config() -> argparse.Namespace:
     parser.add_argument("--max_obs_length", type=int, default=1920,
                         help="when not zero, will truncate the observation to this length before feeding to the model", )
     parser.add_argument("--model_endpoint", help="huggingface model endpoint", type=str, default="", )
-    parser.add_argument("--provider", type=str, default="huggingface", choices=["openai", "huggingface", "google"],
+    parser.add_argument("--provider", type=str, default="google", choices=["openai", "huggingface", "google"],
                         help="模型的发布机构，用于选择配置参数的字典")
-    parser.add_argument("--model", type=str, default='meta-llama/Llama-2-7b-chat-hf',
+    parser.add_argument("--model", type=str, default='gemini-pro',
                         choices=["gpt-3.5-turbo-0613", 'gemini-pro-vision', 'gemini-pro'], help="具体使用的模型")
     parser.add_argument("--imageassist", type=str, default=False,
                         help="True是使用图像信息辅助，使用gemini-pro-vision时为True，其他为False")
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=10)
+    parser.add_argument("--test_end_idx", type=int, default=20)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")

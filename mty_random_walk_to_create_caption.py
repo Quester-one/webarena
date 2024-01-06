@@ -3,6 +3,7 @@ import numpy as np
 import json
 from config_private import WEBARENA_PYTHON_PATH, http_proxy, https_proxy
 import os
+from PIL import Image
 import re
 import matplotlib.pyplot as plt
 from collections import defaultdict
@@ -45,6 +46,7 @@ def config() -> argparse.Namespace:
     parser.add_argument("--config_file",
                         default="/data/mentianyi/code/webarena/config_files/special_config/random_walk_caption.json",
                         help="随机游走模式的配置")
+    parser.add_argument("--save_path", default="web_docu")
 
     args = parser.parse_args()
 
@@ -168,7 +170,7 @@ def display_image(img_obs):
     plt.figure(figsize=(13, 13))
     plt.imshow(img_obs)
     plt.axis('off')
-    plt.show()
+    plt.show()  # plt.clf()    plt.cla()
 
 
 def get_id_by_name(info, name):
@@ -178,84 +180,84 @@ def get_id_by_name(info, name):
             return key
 
 
-def get_name_by_url(graph, url):
-    for key, value in graph.items():
-        if value["url"] == url:
-            return key
-
-
-def find_element_positions(matrix, target):
-    positions = []
-    for i, row in enumerate(matrix):
-        for j, element in enumerate(row):
-            if element == target:
-                positions.append((i, j))
-    return positions
+def create_directory(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print(f"路径 {path} 不存在，已创建成功。")
+    else:
+        print(f"路径 {path} 已存在。")
 
 
 class Graph:
-    def __init__(self):
+    def __init__(self, args):
+        self.args = args
         self.graph = defaultdict(dict)
-        self.global_url = set()  # 已经看到的url
         self.global_name = set()  # 已经看到的节点
         self.visited_name = set()  # 已经探索到的节点
+        self.image_id = 0
 
-    def dfs(self, start, obs, info, env):
-        go_back_flag=False
-        if start not in self.graph:
-            raw_element_list = info['observation_metadata']["text"]["obs_nodes_info"]
-            text_values = extract_text_values(raw_element_list)
-            # 删除复位元素
-            text_values = [item for item in text_values if 'link \'Magento Admin Panel\'' not in item]
-            img_obs = obs["image"]
-            display_image(img_obs)
-            if info["page"].url not in self.global_url:
-                go_back_flag = True
-                self.global_url.add(info["page"].url)
-                self.global_name.update(set(text_values))
-                self.graph[start]["url"] = info["page"].url
-                self.graph[start]["sub_website"] = [[item] for item in text_values]
-            else:
-                name = get_name_by_url(graph=self.graph, url=info["page"].url)
-                clean_text_values_set = set(text_values) - self.global_name
-                self.global_name.update(set(text_values))
-                # 把列表转成链的形式
-                # 说明网页url没有变，所以能找到他的主页名字
-                positions = find_element_positions(self.graph[name]["sub_website"], start)
-                for position in positions:
-                    if len(clean_text_values_set) == 0:
-                        self.graph[name]["sub_website"][position[0]].extend(["end"])
-
+    def direct(self, start, obs, info, env):
         print(start, end=' \n')
         self.visited_name.add(start)
-        if start in self.graph:
-            for neighbor_list in self.graph[start]['sub_website']:
-                for neighbor in neighbor_list:
-                    if neighbor not in self.visited_name and neighbor!="end":
-                        action_name = "click"
-                        element_id = get_id_by_name(info=info, name=neighbor)
-                        action = get_standard_action(action_name=action_name, element_id=element_id)
-                        obs, _, _, _, info = env.step(action)
-                        go_back_flag=self.dfs(neighbor, obs, info, env)
-                        if go_back_flag:
-                            action_name = "go_back"
-                            action = get_standard_action(action_name=action_name, element_id=None)
-                            obs, _, _, _, info = env.step(action)
-        return go_back_flag
+        # 如果满足条件，说明是第一次遇到该元素
+        if start not in self.graph:
+            current_element_name = extract_text_values(info['observation_metadata']["text"]["obs_nodes_info"])
+            # 删除复位元素
+            current_element_name = [item for item in current_element_name if 'link \'Magento Admin Panel\'' not in item]
+            img_obs = obs["image"]
+            image = Image.fromarray(img_obs)
+            image.save(os.path.join(args.save_path, '{}.png'.format(self.image_id)))
+            self.graph[start]["image"] = '{}.png'.format(self.image_id)
+            self.image_id = self.image_id + 1
+            # display_image(img_obs)
+            filtered_element_name = sorted(list(set(current_element_name) - self.global_name))
+            self.global_name.update(set(current_element_name))
+            self.graph[start]["url"] = info["page"].url
+            # self.graph[start]["image"]=img_obs
+            filtered_element_name = {key: False for key in filtered_element_name}
+            # filtered_element_name={"link '\\ue600 admin'":False}
+            if "link 'Sign Out'" in filtered_element_name:
+                filtered_element_name.pop("link 'Sign Out'")
+            if "link 'Remove'" in filtered_element_name:
+                filtered_element_name.pop("link 'Remove'")
+            self.graph[start]["sub_website"] = filtered_element_name
+            self.graph[start]["all_children_explored"] = False
+            print(123)
+        else:
+            filtered_element_name = self.graph[start]["sub_website"]
+            print(456)
+        # 到达叶子节点
+        if len(filtered_element_name) == 0:
+            action_name = "click"
+            element_id = get_id_by_name(info=info, name='link \'Magento Admin Panel\'')
+            action = get_standard_action(action_name=action_name, element_id=element_id)
+            obs, _, _, _, info = env.step(action)
+            self.graph[start]["all_children_explored"] = True
+        # 到达非叶子节点
+        else:
+            for child in filtered_element_name:
+                if not self.graph[start]["sub_website"][child]:
+                    action_name = "click"
+                    element_id = get_id_by_name(info=info, name=child)
+                    action = get_standard_action(action_name=action_name, element_id=element_id)
+                    obs, _, _, _, info = env.step(action)
+                    self.direct(child, obs, info, env)
+                    if self.graph[child]['all_children_explored']:
+                        self.graph[start]["sub_website"][child] = True
+                    if all(value for value in self.graph[start]["sub_website"].values()):
+                        self.graph[start]['all_children_explored'] = True
+                    return None
 
 
-def dfs_method(obs, info, env):
-    graph = Graph()
-    graph.dfs(start="homepage", obs=obs, info=info, env=env)
-    # while True:
-    #     action_name = "click"
-    #     element_id = "95"
-    #     action = get_standard_action(action_name=action_name, element_id=element_id)
-    #     if action["action_type"] == ActionTypes.STOP:
-    #         break
-    #     obs, _, terminated, _, info = env.step(action)
-    #     if terminated:
-    #         break
+def direct_method(args, obs, info, env):
+    graph = Graph(args)
+    while True:
+        graph.direct(start="homepage", obs=obs, info=info, env=env)
+        if graph.graph["homepage"]["all_children_explored"] == True:
+            break
+    my_dict = dict(graph.graph)
+    with open(os.path.join(args.save_path, "my_dict.json"), 'w') as json_file:
+        json.dump(my_dict, json_file, indent=2)
 
 
 if __name__ == "__main__":
@@ -289,5 +291,6 @@ if __name__ == "__main__":
     args = config()
     env = get_env()
     config_file = init_config(args.config_file)
+    create_directory(args.save_path)
     obs, info = env.reset(options={"config_file": config_file})
-    dfs_method(obs, info, env)
+    direct_method(args, obs, info, env)

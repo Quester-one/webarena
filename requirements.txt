@@ -18,3 +18,6 @@ transformers==4.33.2
 sentencepiece
 accelerate
 pyvis
+sentence-transformers
+zeno_client
+python-dotenv

@@ -7,6 +7,8 @@ import logging
 from config_private import SHOPPING, SHOPPING_ADMIN, REDDIT, GITLAB, MAP, WIKIPEDIA, HOMEPAGE, http_proxy, \
     https_proxy, OPENAI_API_KEY, WEBARENA_PYTHON_PATH, GEMINI_API_KEY
 import os
+from sentence_transformers import SentenceTransformer, util
+import google.generativeai as genai
 
 os.environ["SHOPPING"] = SHOPPING
 os.environ["SHOPPING_ADMIN"] = SHOPPING_ADMIN
@@ -42,7 +44,7 @@ from browser_env import (
     Trajectory,
     create_stop_action,
 )
-from browser_env.actions import is_equivalent
+from browser_env.actions import is_equivalent,create_none_action
 from browser_env.auto_login import get_site_comb_from_filepath
 from browser_env.helper_functions import (
     RenderHelper,
@@ -215,6 +217,87 @@ def get_unfinished(config_files: list[str], result_dir: str) -> list[str]:
             unfinished_configs.append(config_file)
     return unfinished_configs
 
+def read_json_file(file_path):
+    """
+    读取json文件
+    """
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    return data
+
+def extract_titles_captions(document):
+    titles = []
+    captions = []
+    for key, value in document.items():
+        titles.append(key)
+        captions.append(value["caption"])
+    return titles, captions
+
+def top_k_indices(lst, k):
+    indices = sorted(range(len(lst)), key=lambda i: lst[i], reverse=True)[:k]
+    return indices
+
+
+def extract_last_abcde(input_str):
+    "提取字符串中最后出现的ABCDE其中一个"
+    match = re.search(r'[A-E](?=[^A-E]*$)', input_str)
+    if match:
+        return match.group(0)
+    else:
+        return None
+
+
+def select_best_by_llm(titles_indices,task,captions,model):
+    abcde_to_12345_dict={"A":0,"B":1,"C":2,"D":3,"E":4}
+    best_id=-1
+    selected_captions=[captions[i] for i in titles_indices]
+    prompt="For the task:{}, the following are descriptions of five web pages. " \
+           "Please choose the most relevant web page from the following pages, " \
+           "think about it, and then choose one of ABCDE in the format of '''Options'''\n".format(task)
+    for index,option in enumerate(["A","B","C","D","E"]):
+        prompt=prompt+"\n******************\n"+option+":\n"+selected_captions[index]
+        messages = [{'role': 'user', 'parts': [prompt]}]
+        count=0
+        while count<20:
+            try:
+                response = model.generate_content(messages).text
+                best_ch=extract_last_abcde(response)
+                best_id=titles_indices[abcde_to_12345_dict[best_ch]]
+                break
+            except:
+                count+=1
+                pass
+    return best_id
+
+
+def find_image_by_number(data_list, target_number):
+    for _,dictionary in data_list.items():
+        if "image" in dictionary and dictionary["image"] == "{}.png".format(target_number):
+            return dictionary
+
+    # 如果没有找到匹配的字典，则返回None
+    return None
+
+def go_to_target_url(task,env,retrieval_model,titles_embeddings,captions,document):
+    top_k=30
+    genai.configure(api_key=GEMINI_API_KEY)
+    llm_model = genai.GenerativeModel('gemini-pro')
+    query_embedding = retrieval_model.encode(task, convert_to_tensor=True)
+    titles_cosine_scores = util.pytorch_cos_sim(query_embedding, titles_embeddings)[0]
+    titles_indices = top_k_indices(titles_cosine_scores, top_k)
+    best_id = select_best_by_llm(titles_indices[:5], task, captions, llm_model)
+    docu_item=find_image_by_number(document, best_id)
+    target_url=docu_item["url"]
+    action = create_none_action()
+    action.update(
+        {
+            "action_type": ActionTypes.GOTO_URL,
+            "url": target_url,
+        }
+    )
+    obs, _, terminated, _, info = env.step(action)
+    return obs, info
+
 
 def test(
         args: argparse.Namespace,
@@ -249,6 +332,13 @@ def test(
         )
         tokenizer = AutoTokenizer.from_pretrained(args.model)
 
+    #文档检索方法的特殊加载
+    document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_task.json')
+    titles,captions = extract_titles_captions(document)
+    retrieval_model_name = 'all-mpnet-base-v2'  # 选择合适的SBERT模型#paraphrase-MiniLM-L6-v2
+    retrieval_model = SentenceTransformer(retrieval_model_name)
+    titles_embeddings = retrieval_model.encode(titles, convert_to_tensor=True)
+
     for config_file in config_file_list:
         '''
         第一层：交互发生错误会终止报错
@@ -261,6 +351,17 @@ def test(
             trajectory: Trajectory = []
             # obs是文本和图像观测,info是观测到的文本信息的编号，坐标，文本
             obs, info = env.reset(options={"config_file": config_file})
+            # state_info: StateInfo = {"observation": obs, "info": info}
+            # trajectory.append(state_info)
+
+            #直接去往需要的url
+            obs, info=go_to_target_url(task=intent,
+                                       env=env,
+                                       retrieval_model=retrieval_model,
+                                       titles_embeddings=titles_embeddings,
+                                       captions=captions,
+                                       document=document
+                                       )
             state_info: StateInfo = {"observation": obs, "info": info}
             trajectory.append(state_info)
 

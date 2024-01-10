@@ -17,9 +17,6 @@ from browser_env import (
     Action,
     ActionTypes,
     ScriptBrowserEnv,
-    StateInfo,
-    Trajectory,
-    create_stop_action,
 )
 
 
@@ -220,6 +217,10 @@ class Graph:
                 filtered_element_name.pop("link 'Sign Out'")
             if "link 'Remove'" in filtered_element_name:
                 filtered_element_name.pop("link 'Remove'")
+            if "link 'Braintree Virtual Terminal'" in filtered_element_name:
+                filtered_element_name.pop("link 'Braintree Virtual Terminal'")
+            if "link 'Download'" in filtered_element_name:
+                filtered_element_name.pop("link 'Download'")
             self.graph[start]["sub_website"] = filtered_element_name
             self.graph[start]["all_children_explored"] = False
             print(123)

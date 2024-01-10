@@ -73,25 +73,25 @@ def convert_human_anno_url_2_id(data, human_anno_list):
     return result_list
 
 def select_best_by_llm(titles_indices,task,captions,model):
-    abcde_to_12345_dict={"A":0,"B":1,"C":2,"D":3,"E":4}
+    abcde_to_12345_dict={"A":0,"B":1,"C":2,"D":3,"E":4,"F":5,"G":6,"H":7,"I":8,"J":9}
     best_id=-1
     selected_captions=[captions[i] for i in titles_indices]
-    prompt="For the task:{}, the following are descriptions of five web pages. " \
+    prompt="For the task:{}, the following are descriptions of ten web pages. " \
            "Please choose the most relevant web page from the following pages, " \
            "think about it, and then choose one of ABCDE in the format of '''Options'''\n".format(task)
-    for index,option in enumerate(["A","B","C","D","E"]):
+    for index,option in enumerate(["A","B","C","D","E","F","G","H","I","J"]):
         prompt=prompt+"\n******************\n"+option+":\n"+selected_captions[index]
         messages = [{'role': 'user', 'parts': [prompt]}]
-        count=0
-        while count<20:
-            try:
-                response = model.generate_content(messages).text
-                best_ch=extract_last_abcde(response)
-                best_id=titles_indices[abcde_to_12345_dict[best_ch]]
-                break
-            except:
-                count+=1
-                pass
+    count=0
+    while count<20:
+        try:
+            response = model.generate_content(messages).text
+            best_ch=extract_last_abcde(response)
+            best_id=titles_indices[abcde_to_12345_dict[best_ch]]
+            break
+        except:
+            count+=1
+            pass
     return best_id
 
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # tasks = read_json_files_in_directory(task_path)
     # sorted_tasks = sort_list_of_dicts(tasks)
     # # 读取先验文档
-    # document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_task.json')
+    # document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_caption.json')
     # titles, captions = extract_titles_captions(document)
     # # 读取人工标注,并返回真实网页对应document的元素id
     # human_anno = read_json_file('/data/mentianyi/code/webarena/human_annotation/human_shopping_admin.json')
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     tasks = read_json_files_in_directory(task_path)
     sorted_tasks = sort_list_of_dicts(tasks)
     # 读取先验文档
-    document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_task.json')
+    document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_caption.json')
     titles, captions = extract_titles_captions(document)
     # 读取人工标注,并返回真实网页对应document的元素id
     human_anno = read_json_file('/data/mentianyi/code/webarena/human_annotation/human_shopping_admin.json')
@@ -176,7 +176,7 @@ if __name__ == "__main__":
         titles_cosine_scores = util.pytorch_cos_sim(query_embedding, titles_embeddings)[0]
         # 前k个元素，第i个里面的数字表示这个元素在列表里面排第几
         titles_indices = top_k_indices(titles_cosine_scores, top_k)
-        best_id=select_best_by_llm(titles_indices[:5],task,captions,llm_model)
+        best_id=select_best_by_llm(titles_indices[:10],task,captions,llm_model)
         human_anno_id = human_anno_ids[i]
         if human_anno_id != -1:
             titles_results.append(titles_indices.index(human_anno_id))

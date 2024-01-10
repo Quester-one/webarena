@@ -139,7 +139,7 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=20)
+    parser.add_argument("--test_end_idx", type=int, default=100)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")

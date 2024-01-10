@@ -60,5 +60,5 @@ if __name__ == "__main__":
     docu_path = "web_docu"
     image_names = read_images_from_folder(docu_path)
     docu_dict = read_json_file("web_docu/my_dict.json")
-    gen_function_summary_each_page(docu_path, docu_dict,output="my_dict_task.json")
+    gen_function_summary_each_page(docu_path, docu_dict,output="my_dict_caption.json")
     print("end")

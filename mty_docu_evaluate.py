@@ -141,7 +141,7 @@ def config() -> argparse.Namespace:
 
     # example config
     parser.add_argument("--test_start_idx", type=int, default=0)
-    parser.add_argument("--test_end_idx", type=int, default=20)
+    parser.add_argument("--test_end_idx", type=int, default=100)
 
     # logging related
     parser.add_argument("--result_dir", type=str, default=None, help="不动.None自动产生时间戳，始终设置为None即可")
@@ -150,6 +150,7 @@ def config() -> argparse.Namespace:
     # check the whether the action space is compatible with the observation space
     if (
             args.action_set_tag == "id_accessibility_tree"
+            and args.observation_type != "accessibility_tree"
             and args.observation_type != "accessibility_tree"
     ):
         raise ValueError(
@@ -257,16 +258,16 @@ def select_best_by_llm(titles_indices,task,captions,model):
     for index,option in enumerate(["A","B","C","D","E"]):
         prompt=prompt+"\n******************\n"+option+":\n"+selected_captions[index]
         messages = [{'role': 'user', 'parts': [prompt]}]
-        count=0
-        while count<20:
-            try:
-                response = model.generate_content(messages).text
-                best_ch=extract_last_abcde(response)
-                best_id=titles_indices[abcde_to_12345_dict[best_ch]]
-                break
-            except:
-                count+=1
-                pass
+    count=0
+    while count<20:
+        try:
+            response = model.generate_content(messages).text
+            best_ch=extract_last_abcde(response)
+            best_id=titles_indices[abcde_to_12345_dict[best_ch]]
+            break
+        except:
+            count+=1
+            pass
     return best_id
 
 
@@ -333,7 +334,7 @@ def test(
         tokenizer = AutoTokenizer.from_pretrained(args.model)
 
     #文档检索方法的特殊加载
-    document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_task.json')
+    document = read_json_file('/data/mentianyi/code/webarena/web_docu/my_dict_caption.json')
     titles,captions = extract_titles_captions(document)
     retrieval_model_name = 'all-mpnet-base-v2'  # 选择合适的SBERT模型#paraphrase-MiniLM-L6-v2
     retrieval_model = SentenceTransformer(retrieval_model_name)
